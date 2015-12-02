@@ -82,9 +82,9 @@ class PointInputBox(urwid.LineBox):
             self.focus_x += 1
 
     def keypress(self, size, key):
-        if key not in ['left', 'right', 'up', 'down','tab','enter']:
+        if key not in ['left', 'right', 'up', 'down', 'tab', 'enter']:
             super().keypress(size, key)
-            self.callback(self.point_list)
+            self.callback()
             return
 
         if key=='down':
@@ -109,33 +109,50 @@ class PointInputBox(urwid.LineBox):
 class MainWindow(urwid.Columns):
     def __init__(self):
         self.output = urwid.Text('')
+        self.degree_box = urwid.Edit('Degree = ','1')
         self.polyfit_box = urwid.Text('Energy = ')
         self.chi2_box = urwid.Text('Chi^2 = ')
         div = urwid.Divider()
         self.exit_button = urwid.Button('Exit', on_press=exit_program)
         exit_fill = urwid.Padding(self.exit_button, align='right', width=8)
 
-        pile = urwid.Pile([self.output, div,
+        pile = urwid.Pile([self.output, self.degree_box, div,
                            self.polyfit_box, self.chi2_box, div,
                            exit_fill])
         fill = urwid.Filler(pile)
 
-        self.points = PointInputBox(self.RefitPoints)
-        super().__init__([fill,(40,self.points)])
+        self.point_box = PointInputBox(self.RefitPoints)
+        super().__init__([fill,(40,self.point_box)])
 
-    def RefitPoints(self, points):
-        if len(points)<2:
+    @property
+    def degree(self):
+        output = self.degree_box.edit_text
+        try:
+            output = int(output)
+        except ValueError:
+            return None
+
+        if output<0:
+            return None
+        else:
+            return output
+
+    def RefitPoints(self):
+        points = self.point_box.point_list
+        degree = self.degree
+        if degree is None or len(points)<degree+1:
+            self.polyfit_box.set_text('Energy = ')
+            self.chi2_box.set_text('Chi^2 = ')
             return
 
         xvals = [x for x,y in points]
         yvals = [y for x,y in points]
-        degree = 1
         res = Polynomial.FromFit(xvals, yvals, degree,
                                  xvar='Chan', yvar='Energy')
 
         self.polyfit_box.set_text(str(res))
         chi2 = res.chi2(xvals,yvals)
-        self.chi2_box.set_text('Chi^2: {:.03f}'.format(chi2))
+        self.chi2_box.set_text('Chi^2 = {:.03f}'.format(chi2))
 
     def unhandled(self, key):
         self.output.set_text('Unhandled input: {}'.format(repr(key)))

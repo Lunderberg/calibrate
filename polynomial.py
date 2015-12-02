@@ -32,9 +32,10 @@ class Polynomial:
             if power == 0:
                 format_str = '{val:.3f}'
             elif power == 1:
-                format_str = '{val:.3f}*{xvar}'
+                format_str = '{val:.3f}*{{xvar}}'
             else:
-                format_str = '{val:.3f}*{xvar}^{power}'
-            terms.append(format_str.format(val=val,power=power,xvar=self.xvar))
+                format_str = '{val:.3f}*{{xvar}}^{power}'
+            terms.append(format_str.format(val=val,power=power))
 
-        return '{yvar} = ' + ' + '.join(terms)
+        output = '{yvar} = ' + ' + '.join(terms)
+        return output.format(xvar=self.xvar, yvar=self.yvar)
