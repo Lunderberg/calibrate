@@ -3,8 +3,9 @@
 from ensure_venv import ensure_venv
 ensure_venv('requirements.txt', system_site_packages=True)
 
-import numpy
 import urwid
+
+from polynomial import Polynomial
 
 palette = [
     ('bold', 'default,bold', 'default'),
@@ -104,19 +105,6 @@ class PointInputBox(urwid.LineBox):
             self.tab_stop()
 
 
-def polynomial(x, coeff):
-    output = 0.0
-    for val in coeff:
-        output *= x
-        output += val
-    return output
-
-def polyfit_chi2(xvals, yvals, coeff):
-    output = 0.0
-    for x,y in zip(xvals, yvals):
-        yfit = polynomial(x, coeff)
-        output += (y-yfit)*(y-yfit)
-    return output
 
 class MainWindow(urwid.Columns):
     def __init__(self):
@@ -141,23 +129,12 @@ class MainWindow(urwid.Columns):
 
         xvals = [x for x,y in points]
         yvals = [y for x,y in points]
-        result = numpy.polyfit(xvals, yvals, 1)
+        degree = 1
+        res = Polynomial.FromFit(xvals, yvals, degree,
+                                 xvar='Chan', yvar='Energy')
 
-        terms = []
-        for i,val in enumerate(result):
-            power = len(result) - i - 1
-            if power == 0:
-                format_str = '{val:.3f}'
-            elif power == 1:
-                format_str = '{val:.3f}*Chan'
-            else:
-                format_str = '{val:.3f}*Chan^{power}'
-            terms.append(format_str.format(val=val,power=power))
-
-        res = 'Energy = ' + ' + '.join(terms)
-
-        self.polyfit_box.set_text(res)
-        chi2 = polyfit_chi2(xvals,yvals,result)
+        self.polyfit_box.set_text(str(res))
+        chi2 = res.chi2(xvals,yvals)
         self.chi2_box.set_text('Chi^2: {:.03f}'.format(chi2))
 
     def unhandled(self, key):
