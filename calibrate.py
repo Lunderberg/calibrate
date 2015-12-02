@@ -9,8 +9,8 @@ from polynomial import Polynomial
 
 palette = [
     ('bold', 'default,bold', 'default'),
-    ('point', 'black', 'white'),
-    ('bg_point', 'light gray', 'black'),
+    ('active', 'white', 'dark gray', '', 'white', 'g20'),
+    ('inactive', 'white', 'black'),
     ]
 
 class PointInputBox(urwid.LineBox):
@@ -25,25 +25,32 @@ class PointInputBox(urwid.LineBox):
     def _setup_GUI(self):
         self.xcontainer = urwid.Pile([urwid.Text('Channel\n', align='center')])
         self.ycontainer = urwid.Pile([urwid.Text('Energy\n', align='center')])
-        xfill = urwid.AttrMap(urwid.Filler(self.xcontainer, valign='top'),
-                              'bg_point')
-        yfill = urwid.AttrMap(urwid.Filler(self.ycontainer, valign='top'),
-                              'bg_point')
+        self.xentries = []
+        self.yentries = []
+
+        xfill = urwid.Filler(self.xcontainer, valign='top')
+        yfill = urwid.Filler(self.ycontainer, valign='top')
         self.columns = urwid.Columns([xfill, yfill],
                                      min_width=5, dividechars=1, focus_column=0)
         super().__init__(self.columns, title='Points')
 
         self.focus_y = 0
 
-    def AddPoint(self):
-        self.xcontainer.widget_list.append(urwid.Edit('--'))
-        self.ycontainer.widget_list.append(urwid.Edit('--'))
+    def AddPoint(self, xvalue=None, yvalue=None):
+        xedit = urwid.Edit(edit_text = '' if xvalue is None else str(xvalue))
+        xmap = urwid.AttrMap(xedit,'active')
+        self.xcontainer.widget_list.append(xmap)
+        self.xentries.append(xedit)
+
+        yedit = urwid.Edit(edit_text = '' if yvalue is None else str(yvalue))
+        ymap = urwid.AttrMap(yedit,'active')
+        self.ycontainer.widget_list.append(ymap)
+        self.yentries.append(yedit)
 
     @property
     def point_list(self):
         output = []
-        for (xentry,_), (yentry,_) in zip(self.xcontainer.contents[1:],
-                                  self.ycontainer.contents[1:]):
+        for (xentry,yentry) in zip(self.xentries, self.yentries):
             try:
                 output.append((float(xentry.edit_text), float(yentry.edit_text)))
             except ValueError:
@@ -106,23 +113,29 @@ class PointInputBox(urwid.LineBox):
 
 
 
-class MainWindow(urwid.Columns):
+class MainWindow(urwid.AttrMap):
     def __init__(self):
         self.output = urwid.Text('')
-        self.degree_box = urwid.Edit('Degree = ','1')
+
+        self.degree_box = urwid.Edit(('inactive','Degree = '),'1')
+        degree_map = urwid.AttrMap(self.degree_box, 'active')
+        degree_padded = urwid.Padding(degree_map, align='left', width=15)
+
         self.polyfit_box = urwid.Text('Energy = ')
         self.chi2_box = urwid.Text('Chi^2 = ')
         div = urwid.Divider()
         self.exit_button = urwid.Button('Exit', on_press=exit_program)
         exit_fill = urwid.Padding(self.exit_button, align='right', width=8)
 
-        pile = urwid.Pile([self.output, self.degree_box, div,
+        pile = urwid.Pile([self.output, degree_padded, div,
                            self.polyfit_box, self.chi2_box, div,
                            exit_fill])
+        pile.set_focus(6)
         fill = urwid.Filler(pile)
 
         self.point_box = PointInputBox(self.RefitPoints)
-        super().__init__([fill,(40,self.point_box)])
+        columns = urwid.Columns([fill,(40,self.point_box)])
+        super().__init__(columns, 'inactive')
 
     @property
     def degree(self):
@@ -155,11 +168,13 @@ class MainWindow(urwid.Columns):
         self.chi2_box.set_text('Chi^2 = {:.03f}'.format(chi2))
 
     def unhandled(self, key):
-        self.output.set_text('Unhandled input: {}'.format(repr(key)))
+        #self.output.set_text('Unhandled input: {}'.format(repr(key)))
+        pass
 
 def exit_program(button):
     raise urwid.ExitMainLoop()
 
 window = MainWindow()
 loop = urwid.MainLoop(window, palette, unhandled_input=window.unhandled)
+loop.screen.set_terminal_properties(colors=256)
 loop.run()
