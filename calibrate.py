@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+from ensure_venv import ensure_venv
+ensure_venv('requirements.txt', system_site_packages=True)
+
 import numpy
 import urwid
 
@@ -86,23 +89,47 @@ class PointInputBox(urwid.LineBox):
         if key=='down':
             self.focus_y += 1
         elif key=='up':
+            if self.focus_y == 0:
+                return key
             self.focus_y -= 1
         elif key=='left':
+            if self.focus_x == 0:
+                return key
             self.focus_x -= 1
         elif key=='right':
+            if self.focus_x == 1:
+                return key
             self.focus_x += 1
         elif key=='tab':
             self.tab_stop()
 
 
+def polynomial(x, coeff):
+    output = 0.0
+    for val in coeff:
+        output *= x
+        output += val
+    return output
+
+def polyfit_chi2(xvals, yvals, coeff):
+    output = 0.0
+    for x,y in zip(xvals, yvals):
+        yfit = polynomial(x, coeff)
+        output += (y-yfit)*(y-yfit)
+    return output
+
 class MainWindow(urwid.Columns):
     def __init__(self):
-        self.result = urwid.Text('Energy = ')
+        self.output = urwid.Text('')
+        self.polyfit_box = urwid.Text('Energy = ')
+        self.chi2_box = urwid.Text('Chi^2 = ')
         div = urwid.Divider()
         self.exit_button = urwid.Button('Exit', on_press=exit_program)
         exit_fill = urwid.Padding(self.exit_button, align='right', width=8)
 
-        pile = urwid.Pile([self.result, div, exit_fill])
+        pile = urwid.Pile([self.output, div,
+                           self.polyfit_box, self.chi2_box, div,
+                           exit_fill])
         fill = urwid.Filler(pile)
 
         self.points = PointInputBox(self.RefitPoints)
@@ -129,11 +156,16 @@ class MainWindow(urwid.Columns):
 
         res = 'Energy = ' + ' + '.join(terms)
 
-        self.result.set_text(res)
+        self.polyfit_box.set_text(res)
+        chi2 = polyfit_chi2(xvals,yvals,result)
+        self.chi2_box.set_text('Chi^2: {:.03f}'.format(chi2))
+
+    def unhandled(self, key):
+        self.output.set_text('Unhandled input: {}'.format(repr(key)))
 
 def exit_program(button):
     raise urwid.ExitMainLoop()
 
 window = MainWindow()
-loop = urwid.MainLoop(window, palette)
+loop = urwid.MainLoop(window, palette, unhandled_input=window.unhandled)
 loop.run()
