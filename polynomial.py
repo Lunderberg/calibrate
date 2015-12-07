@@ -2,7 +2,7 @@ import numpy
 
 class Polynomial:
     def __init__(self, coefficients, xvar='x', yvar='y'):
-        self.coeff = coefficients
+        self.coeff = list(coefficients)
         self.xvar = xvar
         self.yvar = yvar
 
@@ -17,6 +17,11 @@ class Polynomial:
             output *= x
             output += val
         return output
+
+    def reverse(self, y):
+        copy = self.coeff[:]
+        copy[-1] -= y
+        return numpy.roots(copy)
 
     def chi2(self, xvals, yvals):
         output = 0.0

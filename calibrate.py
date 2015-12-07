@@ -4,6 +4,7 @@ from ensure_venv import ensure_venv
 ensure_venv('requirements.txt', system_site_packages=True)
 
 import urwid
+import sys
 
 from polynomial import Polynomial
 
@@ -113,35 +114,82 @@ class PointInputBox(urwid.LineBox):
 
 
 
+class Conversion(urwid.LineBox):
+    def __init__(self, title='', callback=None):
+        self.callback = callback
+
+        self.input_box = urwid.Edit()
+        urwid.connect_signal(self.input_box, 'change', self._on_change)
+
+        input_map = urwid.AttrMap(self.input_box, 'active')
+        self.output_box = urwid.Text('')
+        pile = urwid.Pile([input_map, self.output_box])
+        super().__init__(pile, title=title)
+
+    def _on_change(self, widget, new_text):
+        if self.callback is not None:
+            self.callback(self, new_text)
+
+    @property
+    def text_input(self):
+        return self.input_box.edit_text
+
+    @text_input.setter
+    def text_input(self, val):
+        self.input_box.set_edit_text(val)
+
+    @property
+    def text_output(self):
+        return self.output_box.text
+
+    @text_output.setter
+    def text_output(self, val):
+        self.output_box.set_text(val)
+
+
+
 class MainWindow(urwid.AttrMap):
     def __init__(self):
-        self.output = urwid.Text('')
+        self.fit = None
+        self._setup_GUI()
 
+    def _setup_GUI(self):
         self.degree_box = urwid.Edit(('inactive','Degree = '),'1')
+        urwid.connect_signal(self.degree_box, 'change', self.RefitPoints)
         degree_map = urwid.AttrMap(self.degree_box, 'active')
         degree_padded = urwid.Padding(degree_map, align='left', width=15)
 
         self.polyfit_box = urwid.Text('Energy = ')
         self.chi2_box = urwid.Text('Chi^2 = ')
         div = urwid.Divider()
-        self.exit_button = urwid.Button('Exit', on_press=exit_program)
-        exit_fill = urwid.Padding(self.exit_button, align='right', width=8)
 
-        pile = urwid.Pile([self.output, degree_padded, div,
+        self.conversion = Conversion(title='Chan -> Energy',
+                                     callback=self.OnConversionChange)
+        self.back_conversion = Conversion(title='Energy -> Chan',
+                                          callback=self.OnReverseConversionChange)
+        conversion_columns = urwid.Columns([(20,self.conversion),
+                                            (20,self.back_conversion)])
+
+        exit_button = urwid.Button('Exit', on_press=exit_program)
+        exit_map = urwid.AttrMap(exit_button, 'active')
+        exit_fill = urwid.Padding(exit_map, align='left', width=8)
+
+        pile = urwid.Pile([degree_padded, div,
                            self.polyfit_box, self.chi2_box, div,
+                           conversion_columns, div,
                            exit_fill])
-        pile.set_focus(6)
         fill = urwid.Filler(pile)
 
         self.point_box = PointInputBox(self.RefitPoints)
-        columns = urwid.Columns([fill,(40,self.point_box)])
+        columns = urwid.Columns([(40,self.point_box),fill])
         super().__init__(columns, 'inactive')
 
-    @property
-    def degree(self):
-        output = self.degree_box.edit_text
+    def degree(self, degree_text=None):
+        if degree_text is None:
+            degree_text = self.degree_box.edit_text
+
         try:
-            output = int(output)
+            output = int(degree_text)
         except ValueError:
             return None
 
@@ -150,31 +198,65 @@ class MainWindow(urwid.AttrMap):
         else:
             return output
 
-    def RefitPoints(self):
+    def RefitPoints(self, widget=None, degree_text=None):
         points = self.point_box.point_list
-        degree = self.degree
+        degree = self.degree(degree_text)
+
         if degree is None or len(points)<degree+1:
+            self.fit = None
             self.polyfit_box.set_text('Energy = ')
             self.chi2_box.set_text('Chi^2 = ')
-            return
+        else:
+            xvals = [x for x,y in points]
+            yvals = [y for x,y in points]
+            self.fit = Polynomial.FromFit(xvals, yvals, degree,
+                                          xvar='Chan', yvar='Energy')
+            self.polyfit_box.set_text(str(self.fit))
+            chi2 = self.fit.chi2(xvals,yvals)
+            self.chi2_box.set_text('Chi^2 = {:.03f}'.format(chi2))
 
-        xvals = [x for x,y in points]
-        yvals = [y for x,y in points]
-        res = Polynomial.FromFit(xvals, yvals, degree,
-                                 xvar='Chan', yvar='Energy')
+        self.OnConversionChange(self.conversion)
+        self.OnConversionChange(self.back_conversion)
 
-        self.polyfit_box.set_text(str(res))
-        chi2 = res.chi2(xvals,yvals)
-        self.chi2_box.set_text('Chi^2 = {:.03f}'.format(chi2))
+    def OnConversionChange(self, widget, new_text = None):
+        if new_text is None:
+            new_text = widget.text_input
 
-    def unhandled(self, key):
-        #self.output.set_text('Unhandled input: {}'.format(repr(key)))
-        pass
+        try:
+            x = float(new_text)
+        except ValueError:
+            x = None
+
+        if self.fit is None or x is None:
+            widget.text_output = ''
+        else:
+            widget.text_output = str(self.fit(x))
+
+    def OnReverseConversionChange(self, widget, new_text = None):
+        if new_text is None:
+            new_text = widget.text_input
+
+        try:
+            y = float(new_text)
+        except ValueError:
+            y = None
+
+        if self.fit is None or y is None:
+            widget.text_output = ''
+        else:
+            roots = self.fit.reverse(y)
+            real_roots = [r.real for r in roots if abs(r.imag)<1e-6]
+            if real_roots:
+                output = ', '.join(str(r) for r in real_roots)
+            else:
+                output = 'No real roots'
+            widget.text_output = output
+
 
 def exit_program(button):
     raise urwid.ExitMainLoop()
 
 window = MainWindow()
-loop = urwid.MainLoop(window, palette, unhandled_input=window.unhandled)
+loop = urwid.MainLoop(window, palette)
 loop.screen.set_terminal_properties(colors=256)
 loop.run()
