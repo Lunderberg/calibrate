@@ -1,0 +1,81 @@
+{
+    'sources':{
+
+        'Triple Alpha':{
+            'energies':[
+                {'value':5156.59,
+                 'description':'239Pu',
+                },
+                {'value':5485.56,
+                 'description':'241Am',
+                },
+                {'value':5804.77,
+                 'description':'244Cm',
+                }
+            ],
+        },
+
+        '56Co':{
+            'energies':[
+                {'value':846.770,
+                 'description':'56Co (99%)',
+                },
+                {'value':1037.843,
+                 'description':'56Co (14%)',
+                },
+                {'value':1238.288,
+                 'description':'56Co (66%)',
+                },
+                {'value':1360.212,
+                 'description':'56Co (4%)',
+                },
+                {'value':1771.357,
+                 'description':'56Co (15%)',
+                },
+                {'value':2015.215,
+                 'description':'56Co (3%)',
+                },
+                {'value':2034.791,
+                 'description':'56Co (7%)',
+                },
+                {'value':2598.500,
+                 'description':'56Co (17%)',
+                },
+                {'value':3253.503,
+                 'description':'56Co (8%)',
+                },
+            ],
+        },
+
+        '60Co':{
+            'energies':[
+                {'value':1173.228,
+                 'description':'60Co (100%)',
+                },
+                {'value':1332.492,
+                 'description':'60Co (100%)',
+                },
+            ],
+        },
+
+        '88Y':{
+            'energies':[
+                {'value':898.042,
+                 'description':'88Y (93%)',
+                },
+                {'value':1836.063,
+                 'description':'88Y (99%)',
+                },
+            ],
+        },
+
+        '137Cs':{
+            'energies':[
+                {'value':661.657,
+                 'description':'137Cs (85%)',
+                },
+            ],
+        },
+
+    },
+}

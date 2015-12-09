@@ -3,6 +3,7 @@
 from ensure_venv import ensure_venv
 ensure_venv('requirements.txt', system_site_packages=True)
 
+import ast
 import urwid
 import sys
 
@@ -147,8 +148,43 @@ class Conversion(urwid.LineBox):
         self.output_box.set_text(val)
 
 
+class SourceWindow(urwid.WidgetPlaceholder):
+    def __init__(self, callback=None, filename=None):
+        self._setup_GUI()
+        self.callback = callback
+        if filename is not None:
+            self.LoadFile(filename)
 
-class MainWindow(urwid.AttrMap):
+    def _setup_GUI(self):
+        self.body = urwid.SimpleFocusListWalker([])
+        listbox = urwid.ListBox(self.body)
+        adapter = urwid.BoxAdapter(listbox, height=10)
+        linebox = urwid.LineBox(adapter, title='Add Source')
+        columns = urwid.Columns([(20, linebox)])
+        super().__init__(columns)
+
+    def LoadFile(self, filename):
+        text = open(filename).read()
+        obj = ast.literal_eval(text)
+        self.sources = obj['sources']
+
+        while self.body:
+            self.body.remove(0)
+
+        for source in self.sources:
+            button = urwid.Button(source, on_press=self.OnButtonPress)
+            attrmap = urwid.AttrMap(button, 'active')
+            self.body.append(attrmap)
+
+    def OnButtonPress(self, button):
+        if self.callback is not None:
+            name = button.label
+            energies = self.sources[name]['energies']
+            self.callback(name, energies)
+
+
+
+class MainWindow(urwid.WidgetPlaceholder):
     def __init__(self):
         self.fit = None
         self._setup_GUI()
@@ -170,6 +206,9 @@ class MainWindow(urwid.AttrMap):
         conversion_columns = urwid.Columns([(20,self.conversion),
                                             (20,self.back_conversion)])
 
+        source_window = SourceWindow(callback=self.AddSource,
+                                     filename='sources.txt')
+
         exit_button = urwid.Button('Exit', on_press=exit_program)
         exit_map = urwid.AttrMap(exit_button, 'active')
         exit_fill = urwid.Padding(exit_map, align='left', width=8)
@@ -177,12 +216,18 @@ class MainWindow(urwid.AttrMap):
         pile = urwid.Pile([degree_padded, div,
                            self.polyfit_box, self.chi2_box, div,
                            conversion_columns, div,
+                           source_window, div,
                            exit_fill])
         fill = urwid.Filler(pile)
 
         self.point_box = PointInputBox(self.RefitPoints)
         columns = urwid.Columns([(40,self.point_box),fill])
-        super().__init__(columns, 'inactive')
+        attrmap = urwid.AttrMap(columns, 'inactive')
+        super().__init__(attrmap)
+
+    def AddSource(self, name, energies):
+        for energy in energies:
+            self.point_box.AddPoint(yvalue=str(energy['value']))
 
     def degree(self, degree_text=None):
         if degree_text is None:
