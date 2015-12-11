@@ -27,18 +27,21 @@ class PointInputBox(urwid.LineBox):
     def _setup_GUI(self):
         self.xcontainer = urwid.Pile([urwid.Text('Channel\n', align='center')])
         self.ycontainer = urwid.Pile([urwid.Text('Energy\n', align='center')])
+        self.ccontainer = urwid.Pile([urwid.Text('Comment\n', align='center')])
         self.xentries = []
         self.yentries = []
+        self.centries = []
 
         xfill = urwid.Filler(self.xcontainer, valign='top')
         yfill = urwid.Filler(self.ycontainer, valign='top')
-        self.columns = urwid.Columns([xfill, yfill],
+        cfill = urwid.Filler(self.ccontainer, valign='top')
+        self.columns = urwid.Columns([xfill, yfill, cfill],
                                      min_width=5, dividechars=1, focus_column=0)
         super().__init__(self.columns, title='Points')
 
         self.focus_y = 0
 
-    def AddPoint(self, xvalue=None, yvalue=None):
+    def AddPoint(self, xvalue=None, yvalue=None, comment=None):
         xedit = urwid.Edit(edit_text = '' if xvalue is None else str(xvalue))
         xmap = urwid.AttrMap(xedit,'active')
         self.xcontainer.widget_list.append(xmap)
@@ -48,6 +51,11 @@ class PointInputBox(urwid.LineBox):
         ymap = urwid.AttrMap(yedit,'active')
         self.ycontainer.widget_list.append(ymap)
         self.yentries.append(yedit)
+
+        cedit = urwid.Edit(edit_text = '' if comment is None else comment)
+        cmap = urwid.AttrMap(cedit,'active')
+        self.ccontainer.widget_list.append(cmap)
+        self.centries.append(cedit)
 
     @property
     def point_list(self):
@@ -65,7 +73,7 @@ class PointInputBox(urwid.LineBox):
 
     @focus_x.setter
     def focus_x(self, val):
-        self.columns.focus_position = max(0, min(val,1))
+        self.columns.focus_position = max(0, min(val,2))
 
     @property
     def focus_y(self):
@@ -78,13 +86,14 @@ class PointInputBox(urwid.LineBox):
             self.AddPoint()
         self.xcontainer.focus_position = val+1
         self.ycontainer.focus_position = val+1
+        self.ccontainer.focus_position = val+1
 
     @property
     def nrows(self):
         return len(self.xcontainer.contents)-1
 
     def tab_stop(self):
-        if self.focus_x==1:
+        if self.focus_x==2:
             self.focus_x = 0
             self.focus_y += 1
         else:
@@ -96,7 +105,7 @@ class PointInputBox(urwid.LineBox):
             self.callback()
             return
 
-        if key=='down':
+        if key in ['down','enter']:
             self.focus_y += 1
         elif key=='up':
             if self.focus_y == 0:
@@ -107,7 +116,7 @@ class PointInputBox(urwid.LineBox):
                 return key
             self.focus_x -= 1
         elif key=='right':
-            if self.focus_x == 1:
+            if self.focus_x == 2:
                 return key
             self.focus_x += 1
         elif key=='tab':
@@ -227,7 +236,8 @@ class MainWindow(urwid.WidgetPlaceholder):
 
     def AddSource(self, name, energies):
         for energy in energies:
-            self.point_box.AddPoint(yvalue=str(energy['value']))
+            self.point_box.AddPoint(yvalue=str(energy['value']),
+                                    comment=energy['description'])
 
     def degree(self, degree_text=None):
         if degree_text is None:
@@ -261,7 +271,7 @@ class MainWindow(urwid.WidgetPlaceholder):
             self.chi2_box.set_text('Chi^2 = {:.03f}'.format(chi2))
 
         self.OnConversionChange(self.conversion)
-        self.OnConversionChange(self.back_conversion)
+        self.OnReverseConversionChange(self.back_conversion)
 
     def OnConversionChange(self, widget, new_text = None):
         if new_text is None:
