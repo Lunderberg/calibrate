@@ -25,18 +25,18 @@ class PointInputBox(urwid.LineBox):
         self._setup_GUI()
 
     def _setup_GUI(self):
-        self.xcontainer = urwid.Pile([urwid.Text('Channel\n', align='center')])
-        self.ycontainer = urwid.Pile([urwid.Text('Energy\n', align='center')])
-        self.ccontainer = urwid.Pile([urwid.Text('Comment\n', align='center')])
+        xcontainer = urwid.SimpleListWalker([urwid.Text('Channel\n', align='center')])
+        ycontainer = urwid.SimpleListWalker([urwid.Text('Energy\n', align='center')])
+        ccontainer = urwid.SimpleListWalker([urwid.Text('Comment\n', align='center')])
+        self.xbox = urwid.ListBox(xcontainer)
+        self.ybox = urwid.ListBox(ycontainer)
+        self.cbox = urwid.ListBox(ccontainer)
         self.xentries = []
         self.yentries = []
         self.centries = []
 
-        xfill = urwid.Filler(self.xcontainer, valign='top')
-        yfill = urwid.Filler(self.ycontainer, valign='top')
-        cfill = urwid.Filler(self.ccontainer, valign='top')
-        self.columns = urwid.Columns([xfill, yfill, cfill],
-                                     min_width=5, dividechars=1, focus_column=0)
+        self.columns = urwid.Columns([self.xbox, self.ybox, self.cbox],
+                                    min_width=5, dividechars=1, focus_column=0)
         super().__init__(self.columns, title='Points')
 
         self.focus_y = 0
@@ -44,17 +44,17 @@ class PointInputBox(urwid.LineBox):
     def AddPoint(self, xvalue=None, yvalue=None, comment=None):
         xedit = urwid.Edit(edit_text = '' if xvalue is None else str(xvalue))
         xmap = urwid.AttrMap(xedit,'active')
-        self.xcontainer.widget_list.append(xmap)
+        self.xbox.body.append(xmap)
         self.xentries.append(xedit)
 
         yedit = urwid.Edit(edit_text = '' if yvalue is None else str(yvalue))
         ymap = urwid.AttrMap(yedit,'active')
-        self.ycontainer.widget_list.append(ymap)
+        self.ybox.body.append(ymap)
         self.yentries.append(yedit)
 
         cedit = urwid.Edit(edit_text = '' if comment is None else comment)
         cmap = urwid.AttrMap(cedit,'active')
-        self.ccontainer.widget_list.append(cmap)
+        self.cbox.body.append(cmap)
         self.centries.append(cedit)
 
     @property
@@ -68,6 +68,22 @@ class PointInputBox(urwid.LineBox):
         return output
 
     @property
+    def focus(self):
+        return self.columns.focus.focus
+
+    @property
+    def cursor_pos(self):
+        return self.focus.base_widget.edit_pos
+
+    @cursor_pos.setter
+    def cursor_pos(self, val):
+        self.focus.base_widget.edit_pos = val
+
+    @property
+    def max_cursor_pos(self):
+        return len(self.focus.base_widget.edit_text)
+
+    @property
     def focus_x(self):
         return self.columns.focus_position
 
@@ -77,50 +93,69 @@ class PointInputBox(urwid.LineBox):
 
     @property
     def focus_y(self):
-        return self.xcontainer.focus_position - 1
+        return self.xbox.focus_position - 1
 
     @focus_y.setter
     def focus_y(self, val):
         val = max(0, min(val, self.nrows))
         if val==self.nrows:
             self.AddPoint()
-        self.xcontainer.focus_position = val+1
-        self.ycontainer.focus_position = val+1
-        self.ccontainer.focus_position = val+1
+        self.xbox.focus_position = val+1
+        self.ybox.focus_position = val+1
+        self.cbox.focus_position = val+1
 
     @property
     def nrows(self):
-        return len(self.xcontainer.contents)-1
+        return len(self.xentries)
 
     def tab_stop(self):
-        if self.focus_x==2:
+        if self.focus_x == 2:
             self.focus_x = 0
             self.focus_y += 1
         else:
             self.focus_x += 1
 
-    def keypress(self, size, key):
-        if key not in ['left', 'right', 'up', 'down', 'tab', 'enter']:
-            super().keypress(size, key)
-            self.callback()
-            return
+    def reverse_tab_stop(self):
+        if self.focus_x == 0 and self.focus_y != 0:
+            self.focus_y -= 1
+            self.focus_x = 2
+        else:
+            self.focus_x -= 1
 
+    def keypress(self, size, key):
         if key in ['down','enter']:
             self.focus_y += 1
+
         elif key=='up':
             if self.focus_y == 0:
                 return key
             self.focus_y -= 1
+
         elif key=='left':
-            if self.focus_x == 0:
+            if self.cursor_pos > 0:
+                self.cursor_pos -= 1
+            elif self.focus_x > 0:
+                self.focus_x -= 1
+            else:
                 return key
-            self.focus_x -= 1
+
         elif key=='right':
-            if self.focus_x == 2:
+            if self.cursor_pos < self.max_cursor_pos:
+                self.cursor_pos += 1
+            elif self.focus_x <= 2:
+                self.focus_x += 1
+            else:
                 return key
-            self.focus_x += 1
+
         elif key=='tab':
             self.tab_stop()
+
+        elif key=='shift tab':
+            self.reverse_tab_stop()
+
+        else:
+            super().keypress(size, key)
+            self.callback()
 
 
 
