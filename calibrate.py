@@ -250,8 +250,9 @@ class MainWindow(urwid.WidgetPlaceholder):
         conversion_columns = urwid.Columns([(20,self.conversion),
                                             (20,self.back_conversion)])
 
-        source_window = SourceWindow(callback=self.AddSource,
-                                     filename='sources.txt')
+        source_window = SourceWindow(
+            callback=self.AddSource,
+            filename=os.path.join(os.path.dirname(__file__),'sources.txt'))
 
         exit_button = urwid.Button('Exit', on_press=exit_program)
         exit_map = urwid.AttrMap(exit_button, 'active')

@@ -37,9 +37,9 @@ class Polynomial:
             if power == 0:
                 format_str = '{val:.3f}'
             elif power == 1:
-                format_str = '{val:.3f}*{{xvar}}'
+                format_str = '{val:.6f}*{{xvar}}'
             else:
-                format_str = '{val:.3f}*{{xvar}}^{power}'
+                format_str = '{val:.6f}*{{xvar}}^{power}'
             terms.append(format_str.format(val=val,power=power))
 
         output = '{yvar} = ' + ' + '.join(terms)
