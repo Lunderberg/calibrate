@@ -77,5 +77,25 @@
             ],
         },
 
+        '133Ba':{
+            'energies':[
+                {'value':80.9979,
+                 'description':'133Ba (33%)',
+                 },
+                {'value':276.3989,
+                 'description':'133Ba (7%)',
+                 },
+                {'value':302.8508,
+                 'description':'133Ba (18%)',
+                 },
+                {'value':356.0129,
+                 'description':'133Ba (62%)',
+                 },
+                {'value':383.8485,
+                 'description':'133Ba (9%)',
+                 },
+            ],
+        },
+
     },
 }
