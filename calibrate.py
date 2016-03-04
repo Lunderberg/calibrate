@@ -4,6 +4,7 @@ from ensure_venv import ensure_venv
 ensure_venv('requirements.txt', system_site_packages=True)
 
 import ast
+import os
 import urwid
 import sys
 
@@ -252,7 +253,8 @@ class MainWindow(urwid.WidgetPlaceholder):
 
         source_window = SourceWindow(
             callback=self.AddSource,
-            filename=os.path.join(os.path.dirname(__file__),'sources.txt'))
+            filename=os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                  'sources.txt'))
 
         exit_button = urwid.Button('Exit', on_press=exit_program)
         exit_map = urwid.AttrMap(exit_button, 'active')

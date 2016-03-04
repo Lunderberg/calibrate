@@ -2,7 +2,7 @@ import os
 import subprocess
 import sys
 
-script_dir = os.path.dirname(sys.argv[0])
+script_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
 venv_name = 'venv'
 venv_dir = os.path.join(script_dir, venv_name)
 
